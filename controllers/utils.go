@@ -1,10 +1,14 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"isp/models"
 	"log"
+	"math/big"
+	"net/smtp"
 	"os"
 	"unicode"
 
@@ -101,29 +105,88 @@ func CheckCredentials(useremail, userpassword string, db *gorm.DB) bool {
 		return true
 	} else {
 		// returns an empty array, so simply pass as not found, 403 unauth
-		log.Fatal("idhar ", err)
+		log.Fatal("ERR ", err)
 
 	}
 	return false
 }
 
+// GenerateSecureToken returns a secured n digit token
+func GenerateSecureToken(length int) string {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)
+}
+
+func getRandNum() int64 {
+	max := big.NewInt(999999)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		log.Fatal(err)
+	}
+	otp := n.Int64()
+	return otp
+}
+
+func GetOtp() int64 {
+	for {
+		otp := getRandNum()
+
+		if otp > 100000 && otp < 999999 {
+			return otp
+		}
+	}
+}
+
+// SendMail - GLobal function to send mail
+func SendMail(recipentList []string, message []byte) {
+	SMTP_USER := os.Getenv("SMTP_USER")
+	SMTP_PASSWORD := os.Getenv("SMTP_PASSWORD")
+	SMTP_HOST := os.Getenv("SMTP_HOST")
+	SMTP_PORT := os.Getenv("SMTP_PORT")
+
+	fmt.Println("SMTP HERE ", SMTP_HOST+":"+SMTP_PORT)
+
+	auth := smtp.PlainAuth("", SMTP_USER, SMTP_PASSWORD, SMTP_HOST)
+	err := smtp.SendMail(SMTP_HOST+":"+SMTP_PORT, auth, SMTP_USER, recipentList, message)
+	if err != nil {
+		fmt.Println("ERR HERE > ", err)
+		return
+	}
+	fmt.Println("MAIL SENT")
+}
+
+// SendOTPToUser sends mail to the user
+func SendOTPTOUser(email string, otp string) {
+	recipent_list := []string{email}
+	text := "Hello " + email + ", the OTP to reset your password is " + otp
+	message := []byte(text)
+	go SendMail(recipent_list, message)
+}
+
 type Settings struct {
-	DB_HOST     string
-	DB_NAME     string
-	DB_USER     string
-	DB_PASSWORD string
-	DB_PORT     string
+	DB_HOST       string
+	DB_NAME       string
+	DB_USER       string
+	DB_PASSWORD   string
+	DB_PORT       string
+	SMTP_USER     string
+	SMTP_PASSWORD string
+	SMTP_HOST     string
+	SMTP_PORT     string
 }
 
 func InitializeSettings() Settings {
+	DB_USER := os.Getenv("DB_USER")
 	DB_HOST := os.Getenv("DB_HOST")
 	DB_NAME := os.Getenv("DB_NAME")
-	DB_USER := os.Getenv("DB_USER")
 	DB_PASSWORD := os.Getenv("DB_PASSWORD")
 
 	switch {
 	case DB_HOST == "":
-		fmt.Println("Environmet variable DB_HOST not set.")
+		fmt.Println("2 Environmet variable DB_HOST not set.")
 		os.Exit(1)
 	case DB_NAME == "":
 		fmt.Println("Environmet variable DB_NAME not set.")

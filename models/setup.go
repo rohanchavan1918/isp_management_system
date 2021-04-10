@@ -27,7 +27,7 @@ func InitializeSettings() Settings {
 
 	switch {
 	case DB_HOST == "":
-		fmt.Println("Environmet variable DB_HOST not set.")
+		fmt.Println("1 Environmet variable DB_HOST not set.")
 		os.Exit(1)
 	case DB_NAME == "":
 		fmt.Println("Environmet variable DB_NAME not set.")
@@ -63,7 +63,7 @@ func ConnectDataBase() {
 		panic("Failed to connect to database!")
 	}
 
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&User{}, &ForgotPassword{})
 
 	DB = db
 }

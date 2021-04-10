@@ -17,13 +17,38 @@ func PublicEndpoints(r *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) {
 			"error": "Method Not Allowed",
 		})
 	})
-	r.POST("/signin", authMiddleware.LoginHandler)
 
+	r.POST("/signin", authMiddleware.LoginHandler)
 	r.GET("/signin", func(c *gin.Context) {
 		c.JSON(401, gin.H{
 			"error": "Method Not Allowed",
 		})
 	})
+
+	// Forgot password
+	r.POST("/forgot_password", controllers.ForgotPassword)
+	r.GET("/forgot_password", func(c *gin.Context) {
+		c.JSON(401, gin.H{
+			"error": "Method Not Allowed",
+		})
+	})
+
+	// Forgot password
+	r.POST("/verify_otp", controllers.VerifyOTP)
+	r.GET("/verify_otp", func(c *gin.Context) {
+		c.JSON(401, gin.H{
+			"error": "Method Not Allowed",
+		})
+	})
+
+	// Update forgoten Password
+	r.POST("/update_forgoten_password/:token", controllers.UpdateForgotenPassword)
+	r.GET("/update_forgoten_password", func(c *gin.Context) {
+		c.JSON(401, gin.H{
+			"error": "Method Not Allowed",
+		})
+	})
+
 }
 
 // SetupRouter creates a router with default

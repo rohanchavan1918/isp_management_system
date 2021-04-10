@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"isp/controllers"
 	"isp/models"
 	"time"
@@ -53,8 +52,6 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 			if count == 0 {
 				return nil, jwt.ErrFailedAuthentication
 			}
-
-			fmt.Println("Came Here ...")
 			if controllers.CheckCredentials(loginVals.Email, loginVals.Password, models.DB) == true {
 				return &models.User{
 					Email: email,
