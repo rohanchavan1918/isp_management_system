@@ -125,6 +125,7 @@ func GetIDFromEmail(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"id":    User.ID,
 			"email": User.Email,
+			"role":  User.Role,
 		})
 	}
 }

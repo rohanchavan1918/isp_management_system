@@ -63,7 +63,7 @@ func ConnectDataBase() {
 		panic("Failed to connect to database!")
 	}
 
-	db.AutoMigrate(&User{}, &ForgotPassword{})
+	db.AutoMigrate(&User{}, &ForgotPassword{}, &Plan{})
 
 	DB = db
 }

@@ -64,6 +64,9 @@ func SetupRouter() *gin.Engine {
 	{
 		auth.GET("/whoami", controllers.GetIDFromEmail)
 		auth.POST("/reset_password", controllers.ResetPassword)
+		auth.POST("/plans/add", controllers.AddPlan)
+		auth.GET("/plans/all", controllers.GetAllPlans)
+		auth.DELETE("/plans/:id", controllers.DeletePlan)
 	}
 
 	return r
