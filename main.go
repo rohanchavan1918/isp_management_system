@@ -14,5 +14,5 @@ func main() {
 	_ = settings.DB_HOST
 	models.ConnectDataBase()
 	r := routes.SetupRouter()
-	r.Run()
+	r.Run(":8000")
 }

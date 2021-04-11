@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html/template"
 	"isp/models"
 	"log"
 	"math/big"
@@ -141,29 +143,45 @@ func GetOtp() int64 {
 }
 
 // SendMail - GLobal function to send mail
-func SendMail(recipentList []string, message []byte) {
+func SendMailToUser(recipentList []string, otp string, purpose string) {
 	SMTP_USER := os.Getenv("SMTP_USER")
 	SMTP_PASSWORD := os.Getenv("SMTP_PASSWORD")
 	SMTP_HOST := os.Getenv("SMTP_HOST")
 	SMTP_PORT := os.Getenv("SMTP_PORT")
 
-	fmt.Println("SMTP HERE ", SMTP_HOST+":"+SMTP_PORT)
-
 	auth := smtp.PlainAuth("", SMTP_USER, SMTP_PASSWORD, SMTP_HOST)
-	err := smtp.SendMail(SMTP_HOST+":"+SMTP_PORT, auth, SMTP_USER, recipentList, message)
-	if err != nil {
-		fmt.Println("ERR HERE > ", err)
-		return
+
+	switch {
+	case purpose == "OTPRESET":
+		wd, wderr := os.Getwd()
+		if wderr != nil {
+			log.Fatal(wderr)
+		}
+		t, parsing_err := template.ParseFiles(wd + "/templates/otp_mail.html")
+		if parsing_err != nil {
+			fmt.Println("Error in parsing error ", parsing_err)
+		}
+
+		var body bytes.Buffer
+
+		mimeHeaders := "MIME-version: 1.0;\nContent-Type: text/html;"
+		body.Write([]byte(fmt.Sprintf("Subject: OTP to reset your password. \n%s\n\n", mimeHeaders)))
+
+		t.Execute(&body, struct{ OTP string }{OTP: otp})
+
+		err := smtp.SendMail(SMTP_HOST+":"+SMTP_PORT, auth, SMTP_USER, recipentList, body.Bytes())
+		if err != nil {
+			fmt.Println("ERR HERE > ", err)
+			return
+		}
+		fmt.Println("MAIL SENT")
 	}
-	fmt.Println("MAIL SENT")
 }
 
 // SendOTPToUser sends mail to the user
 func SendOTPTOUser(email string, otp string) {
 	recipent_list := []string{email}
-	text := "Hello " + email + ", the OTP to reset your password is " + otp
-	message := []byte(text)
-	go SendMail(recipent_list, message)
+	SendMailToUser(recipent_list, otp, "OTPRESET")
 }
 
 type Settings struct {

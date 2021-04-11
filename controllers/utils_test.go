@@ -13,6 +13,6 @@ func TestSendMail(t *testing.T) {
 	fmt.Println("SMTP HERE ", SMTP_HOST+":"+SMTP_PORT)
 
 	recipent_list := []string{"rohanchavan@nimapinfotech.com"}
-	message := []byte("Hello bro how are you")
-	SendMail(recipent_list, message)
+	message := "Hello bro how are you"
+	SendMail(recipent_list, message, "test")
 }
