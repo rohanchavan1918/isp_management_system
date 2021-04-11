@@ -14,6 +14,7 @@ type User struct {
 	DateOfBirth string
 	Gender      string
 	Password    string
+	Role        int // ADMIN - 1, USER -2
 	// Meta
 	CreatedAt  time.Time
 	UpdatedAt  time.Time

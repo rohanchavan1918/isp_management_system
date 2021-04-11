@@ -101,6 +101,7 @@ func Signup(c *gin.Context) {
 		MobileNo:    template.HTMLEscapeString(tempuser.MobileNo),
 		DateOfBirth: template.HTMLEscapeString(tempuser.DateOfBirth),
 		Gender:      template.HTMLEscapeString(tempuser.Gender),
+		Role:        2,
 		Password:    encryptedPassword,
 		IsActive:    true,
 	}
