@@ -9,6 +9,7 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func AddPlan(c *gin.Context) {
@@ -81,4 +82,65 @@ func DeletePlan(c *gin.Context) {
 		models.DB.Delete(&plan, plan_id)
 		c.JSON(http.StatusOK, gin.H{"message": "Plan deleted successfully"})
 	}
+}
+
+func UpdatePlan(c *gin.Context) {
+	claims := jwt.ExtractClaims(c)
+	user_email, _ := claims["email"]
+	var User models.User
+	var Plan models.Plan
+	type UpdatePlanInput struct {
+		gorm.Model
+		Cost     int
+		Name     string
+		Speed    string
+		Duration int    // Number of days
+		Notes    string //Additoinal string	}
+	}
+
+	plan_id := c.Param("id")
+
+	if err := models.DB.Where("email = ? AND role=1", user_email).First(&User).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	// Main logic here.
+	if err := models.DB.Where("id = ?", plan_id).First(&Plan).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+		return
+	}
+
+	var input UpdatePlanInput
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		fmt.Println("Error in bind json", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	fmt.Println("plan is ", Plan)
+	fmt.Println("Updates to be done ", input)
+	models.DB.Model(&Plan).Updates(input)
+	c.JSON(http.StatusOK, gin.H{"data": &Plan})
+
+}
+
+func GetPlan(c *gin.Context) {
+	claims := jwt.ExtractClaims(c)
+	user_email, _ := claims["email"]
+	var User models.User
+	var Plan models.Plan
+
+	plan_id := c.Param("id")
+
+	if err := models.DB.Where("email = ? AND role=1", user_email).First(&User).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	// Main logic here.
+	if err := models.DB.Where("id = ?", plan_id).First(&Plan).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": &Plan})
+
 }
