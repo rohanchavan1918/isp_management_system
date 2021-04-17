@@ -1,14 +1,18 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"isp/models"
+	"log"
 	"net/http"
 	"strconv"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
+	. "github.com/logrusorgru/aurora"
 	"gorm.io/gorm"
 )
 
@@ -46,9 +50,41 @@ func AddPlan(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Some error occoured."})
 			return
 		}
+		CacheNewPlan(sanitized_new_plan)
 		c.JSON(http.StatusCreated, gin.H{"id": sanitized_new_plan.ID, "name": sanitized_new_plan.Name})
+		fmt.Println("caching new plan")
 
+		return
 	}
+}
+
+func CacheNewPlan(plan models.Plan) {
+	// ScanRows is a method of `gorm.DB`, it can be used to scan a row into a struct
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	var ctx = context.Background()
+
+	var m = make(map[string]interface{})
+	m["id"] = plan.ID
+	m["name"] = plan.Name
+	m["speed"] = plan.Speed
+	m["duration"] = plan.Duration
+	m["cost"] = plan.Cost
+	m["notes"] = plan.Notes
+
+	key := "plan:" + strconv.Itoa(plan.ID)
+	if !CheckKeyExists(client, key, strconv.Itoa(plan.ID)) {
+		err := client.HSet(ctx, key, m)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(Bold(Cyan("[INFO] New plan cached.")))
+		log.Println(Bold(Cyan("[INFO] New plan cached.")))
+	}
+
 }
 
 func GetAllPlans(c *gin.Context) {
@@ -62,9 +98,15 @@ func GetAllPlans(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	} else {
+		// Get all cached plans
+
 		models.DB.Find(&all_plans)
 		c.JSON(http.StatusOK, &all_plans)
 	}
+}
+
+func GetAllCachedPlans(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"data": GetCachedPlans()})
 }
 
 func DeletePlan(c *gin.Context) {

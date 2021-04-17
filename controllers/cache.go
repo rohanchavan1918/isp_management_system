@@ -2,39 +2,114 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"isp/models"
+	"log"
+	"strconv"
 
 	"github.com/go-redis/redis/v8"
+	. "github.com/logrusorgru/aurora"
 )
 
 var ctx = context.Background()
 
-func ExampleClient() {
-	rdb := redis.NewClient(&redis.Options{
+// InitialPlanCache caches and sync all the plans from db to redis.
+func InitialPlanCache() {
+	// User Plans will be fetched by all users on dashboards and is common for all, thus it should be cached.
+	fmt.Println(Bold(Cyan("[INFO] Started Caching ...")))
+	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
-	err := rdb.Set(ctx, "Name", "Rohan", 0).Err()
+	var plans []models.Plan
+	db := models.DB
+
+	result := db.Find(&plans)
+	if result.Error != nil {
+		log.Println("[ERR] ", result.Error)
+	}
+	rows, err := db.Model(&models.Plan{}).Rows()
+	defer rows.Close()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
-	val, err := rdb.Get(ctx, "Name").Result()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("key", val)
+	for rows.Next() {
+		var plan models.Plan // ScanRows is a method of `gorm.DB`, it can be used to scan a row into a struct
+		db.ScanRows(rows, &plan)
+		var m = make(map[string]interface{})
+		m["id"] = plan.ID
+		m["name"] = plan.Name
+		m["speed"] = plan.Speed
+		m["duration"] = plan.Duration
+		m["cost"] = plan.Cost
+		m["notes"] = plan.Notes
 
-	// val2, err := rdb.Get(ctx, "key2").Result()
-	// if err == redis.Nil {
-	// 	fmt.Println("key2 does not exist")
-	// } else if err != nil {
-	// 	panic(err)
-	// } else {
-	// 	fmt.Println("key2", val2)
-	// }
-	// Output: key value
-	// key2 does not exist
+		key := "plan:" + strconv.Itoa(plan.ID)
+		doesKeyExist := CheckKeyExists(client, key, strconv.Itoa(plan.ID))
+		if doesKeyExist == false {
+
+			err := client.HMSet(ctx, key, m).Err()
+
+			if err != nil {
+				log.Println("[ERR] ", err)
+			}
+		}
+	}
+
+	// for models.DB.Next()
+	log.Println(Bold(Cyan("[INFO] Initial plans cached.")))
+}
+
+func GetKeyInfo(client *redis.Client, key string) map[string]string {
+	res, cerr := client.HGetAll(ctx, key).Result()
+	if cerr != nil {
+		fmt.Println(cerr)
+	}
+	return res
+}
+
+// CheckKeyExists checks if the key is present on redis
+func CheckKeyExists(client *redis.Client, key string, id string) bool {
+	_, err := client.HGet(ctx, key, id).Result()
+	if err == redis.Nil {
+		// log.Println("key2 does not exist")
+		return false
+	} else if err != nil {
+		log.Println("caching err ")
+	} else {
+		return true
+	}
+}
+
+func GetCachedPlans() []models.Plan {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	cachedList := []models.Plan{}
+	res, err := client.Keys(ctx, "plan:*").Result()
+	if err == redis.Nil {
+		// DB HIT
+	}
+	fmt.Println(res)
+	for k, v := range res {
+		fmt.Println(k, v)
+		data := GetKeyInfo(client, v)
+		// fmt.Println(data)
+		// convert map to json
+		jsonString, _ := json.Marshal(data)
+		// convert json to struct
+		s := models.Plan{}
+		json.Unmarshal(jsonString, &s)
+		// fmt.Println(s)
+		cachedList = append(cachedList, s)
+	}
+	fmt.Println(cachedList)
+	return cachedList
 }

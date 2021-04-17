@@ -13,6 +13,7 @@ func main() {
 	settings := controllers.InitializeSettings()
 	_ = settings.DB_HOST
 	models.ConnectDataBase()
+	go controllers.InitialPlanCache()
 	r := routes.SetupRouter()
-	r.Run(":8000")
+	r.Run(":8080")
 }

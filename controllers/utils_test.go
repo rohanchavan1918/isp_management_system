@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestSendMail(t *testing.T) {
+func TestInitialPlanCache(t *testing.T) {
 
-	ExampleClient()
+	InitialPlanCache()
 }

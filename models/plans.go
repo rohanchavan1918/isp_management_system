@@ -1,12 +1,11 @@
 package models
 
-import "gorm.io/gorm"
-
 type Plan struct {
-	gorm.Model
-	Name     string
-	Speed    string
-	Duration int // Number of days
-	Cost     int
-	Notes    string //Additoinal string
+	ID       int    `json:"id,string"`
+	Name     string `json:"name"`
+	Speed    string `json:"speed"`
+	Duration int    `json:"duration"` // Number of days
+	Cost     int    `json:"cost"`
+	Notes    string `json:"notes"` //Additoinal string
+	IsActive bool   `json:"isactive"`
 }
