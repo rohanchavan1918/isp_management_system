@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -222,5 +223,60 @@ func GetPlan(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": &Plan})
+
+}
+
+func AddUserToPlan(c *gin.Context) {
+
+	type UserPlanInput struct {
+		UserID int `json:"user_id"`
+		PlanID int `json:"plan_id"`
+	}
+	claims := jwt.ExtractClaims(c)
+	user_email, _ := claims["email"]
+	var User models.User
+	var TargetUser models.User
+	var Plan models.Plan
+	var Input UserPlanInput
+	var NewUserPlan models.UserPlans
+
+	log.Println("user email ", user_email)
+	if err := models.DB.Where("email = ? AND role=1", user_email).First(&User).Error; err != nil {
+		log.Println("err asd a", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	log.Println("Got user ", User.FirstName)
+	if err := c.ShouldBindJSON(&Input); err != nil {
+		fmt.Println("Error in bind json", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error here": err.Error()})
+		return
+	}
+
+	if err := models.DB.Where("id = ? AND role=2", Input.UserID).First(&TargetUser).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found."})
+		return
+	}
+
+	if serr := models.DB.First(&Plan, int(Input.PlanID)).Error; serr != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": serr})
+	}
+
+	now := time.Now()
+	then := now.AddDate(0, 0, Plan.Duration)
+
+	NewUserPlan.PlanId = Plan.ID
+	NewUserPlan.UserId = int(TargetUser.ID)
+	NewUserPlan.IsActive = true
+	NewUserPlan.ValidTill = then
+	NewUserPlan.Created_at = now
+
+	res := models.DB.Create(&NewUserPlan)
+	if res.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Some error occoured."})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"data": NewUserPlan})
 
 }

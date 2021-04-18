@@ -70,6 +70,7 @@ func SetupRouter() *gin.Engine {
 		auth.GET("/plan/:id", controllers.GetPlan)
 		auth.PATCH("/plan/:id", controllers.UpdatePlan)
 		auth.DELETE("/plan/:id", controllers.DeletePlan)
+		auth.POST("/plan/assign", controllers.AddUserToPlan)
 	}
 
 	return r
