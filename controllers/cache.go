@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"isp/models"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/go-redis/redis/v8"
@@ -19,7 +20,7 @@ func InitialPlanCache() {
 	// User Plans will be fetched by all users on dashboards and is common for all, thus it should be cached.
 	fmt.Println(Bold(Cyan("[INFO] Started Caching ...")))
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     os.Getenv("REDIS_HOST"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -34,7 +35,7 @@ func InitialPlanCache() {
 	rows, err := db.Model(&models.Plan{}).Rows()
 	defer rows.Close()
 	if err != nil {
-		fmt.Println(err)
+		log.Println("[ERR] ", result.Error)
 	}
 
 	for rows.Next() {
@@ -76,18 +77,18 @@ func GetKeyInfo(client *redis.Client, key string) map[string]string {
 func CheckKeyExists(client *redis.Client, key string, id string) bool {
 	_, err := client.HGet(ctx, key, id).Result()
 	if err == redis.Nil {
-		// log.Println("key2 does not exist")
 		return false
 	} else if err != nil {
 		log.Println("caching err ")
 	} else {
 		return true
 	}
+	return false
 }
 
 func GetCachedPlans() []models.Plan {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     os.Getenv("REDIS_HOST"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -97,19 +98,14 @@ func GetCachedPlans() []models.Plan {
 	if err == redis.Nil {
 		// DB HIT
 	}
-	fmt.Println(res)
-	for k, v := range res {
-		fmt.Println(k, v)
+	for _, v := range res {
 		data := GetKeyInfo(client, v)
-		// fmt.Println(data)
 		// convert map to json
 		jsonString, _ := json.Marshal(data)
 		// convert json to struct
 		s := models.Plan{}
 		json.Unmarshal(jsonString, &s)
-		// fmt.Println(s)
 		cachedList = append(cachedList, s)
 	}
-	fmt.Println(cachedList)
 	return cachedList
 }

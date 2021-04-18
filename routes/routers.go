@@ -67,7 +67,6 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/reset_password", controllers.ResetPassword)
 		auth.POST("/plans/add", controllers.AddPlan)
 		auth.GET("/plans/all", controllers.GetAllPlans)
-		auth.GET("/plans/cached_all", controllers.GetAllCachedPlans)
 		auth.GET("/plan/:id", controllers.GetPlan)
 		auth.PATCH("/plan/:id", controllers.UpdatePlan)
 		auth.DELETE("/plan/:id", controllers.DeletePlan)

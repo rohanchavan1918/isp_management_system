@@ -194,6 +194,7 @@ type Settings struct {
 	SMTP_PASSWORD string
 	SMTP_HOST     string
 	SMTP_PORT     string
+	REDIS_HOST    string
 }
 
 func InitializeSettings() Settings {

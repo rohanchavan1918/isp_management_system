@@ -7,14 +7,24 @@ import (
 	"isp/models"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	. "github.com/logrusorgru/aurora"
-	"gorm.io/gorm"
 )
+
+type UpdatePlanInput struct {
+	ID       int    `json:"id,string"`
+	Name     string `json:"name"`
+	Speed    string `json:"speed"`
+	Duration int    `json:"duration"` // Number of days
+	Cost     int    `json:"cost"`
+	Notes    string `json:"notes"` //Additoinal string
+	IsActive bool   `json:"isactive"`
+}
 
 func AddPlan(c *gin.Context) {
 	claims := jwt.ExtractClaims(c)
@@ -58,10 +68,26 @@ func AddPlan(c *gin.Context) {
 	}
 }
 
+func DeletePlanFromCache(key string) {
+	fmt.Println("DELETING cache ", key)
+	client := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_HOST"),
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	var ctx = context.Background()
+	res := client.Del(ctx, key)
+	if res.Val() == 0 {
+		log.Println("Not Deleted from cache ", key)
+	} else if res.Val() == 1 {
+		log.Println("Deleted from cache ", key)
+	}
+}
+
 func CacheNewPlan(plan models.Plan) {
 	// ScanRows is a method of `gorm.DB`, it can be used to scan a row into a struct
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     os.Getenv("REDIS_HOST"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -81,32 +107,44 @@ func CacheNewPlan(plan models.Plan) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(Bold(Cyan("[INFO] New plan cached.")))
 		log.Println(Bold(Cyan("[INFO] New plan cached.")))
 	}
 
 }
 
+// GetAllPlans returns the list of plans
+// all?source=0 -- Returns data from cache
+// all?source=1 -- Returns data from DB
 func GetAllPlans(c *gin.Context) {
+
+	user_source := c.Query("source")
+
 	claims := jwt.ExtractClaims(c)
 	user_email, _ := claims["email"]
 	var User models.User
+	if user_source == "0" {
+		if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		} else {
+			// Get all cached plans
+			c.JSON(http.StatusOK, gin.H{"data": GetCachedPlans()})
+			return
+		}
+	} else if user_source == "1" {
+		all_plans := []models.Plan{}
 
-	all_plans := []models.Plan{}
-
-	if err := models.DB.Where("email = ? AND role=1", user_email).First(&User).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	} else {
-		// Get all cached plans
-
-		models.DB.Find(&all_plans)
-		c.JSON(http.StatusOK, &all_plans)
+		if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		} else {
+			models.DB.Find(&all_plans)
+			c.JSON(http.StatusOK, &all_plans)
+			return
+		}
 	}
-}
-
-func GetAllCachedPlans(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"data": GetCachedPlans()})
+	c.JSON(http.StatusNotFound, gin.H{"message": "Not found."})
+	return
 }
 
 func DeletePlan(c *gin.Context) {
@@ -122,8 +160,14 @@ func DeletePlan(c *gin.Context) {
 	} else {
 
 		models.DB.Delete(&plan, plan_id)
+		go DeletePlanFromCache("plan:" + plan_id)
 		c.JSON(http.StatusOK, gin.H{"message": "Plan deleted successfully"})
 	}
+}
+
+func UpdatePlanInCache(key string, plan models.Plan) {
+	DeletePlanFromCache(key)
+	CacheNewPlan(plan)
 }
 
 func UpdatePlan(c *gin.Context) {
@@ -131,14 +175,6 @@ func UpdatePlan(c *gin.Context) {
 	user_email, _ := claims["email"]
 	var User models.User
 	var Plan models.Plan
-	type UpdatePlanInput struct {
-		gorm.Model
-		Cost     int
-		Name     string
-		Speed    string
-		Duration int    // Number of days
-		Notes    string //Additoinal string	}
-	}
 
 	plan_id := c.Param("id")
 
@@ -159,9 +195,11 @@ func UpdatePlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	fmt.Println("plan is ", Plan)
-	fmt.Println("Updates to be done ", input)
+
 	models.DB.Model(&Plan).Updates(input)
+	// Update the values incache ( Delete existing entry in cache, add new entry in cache  )
+	UpdatePlanInCache("plan:"+strconv.Itoa(int(input.ID)), Plan)
+
 	c.JSON(http.StatusOK, gin.H{"data": &Plan})
 
 }
