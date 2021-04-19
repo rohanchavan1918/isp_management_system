@@ -1,0 +1,57 @@
+basePath: /api/v1/
+definitions:
+  controllers.ResetPasswordInput:
+    properties:
+      confirmNewPassword:
+        type: string
+      currentPassword:
+        type: string
+      newPassword:
+        type: string
+    required:
+    - confirmNewPassword
+    - currentPassword
+    - newPassword
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: API Support
+  description: ISP management system.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: ISP Management System API
+  version: "1.0"
+paths:
+  /api/v1/auth/reset_password:
+    post:
+      consumes:
+      - application/json
+      description: returns the ID, Email of the currently loggedin user.
+      parameters:
+      - description: User Data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ResetPasswordInput'
+      produces:
+      - application/json
+      summary: /api/v1/auth/reset_password ResetPassword allows you to reset your
+        password.
+  /api/v1/auth/whoami:
+    get:
+      consumes:
+      - application/json
+      description: returns the ID, Email of the currently loggedin user.
+      produces:
+      - application/json
+      summary: /api/v1/auth/whoami returns the basic details (id, email) of the logged
+        user.
+  /api/v1/signup:
+    post:
+      description: Signup/Register/Add users
+      summary: Signup/Register/Add Users
+swagger: "2.0"

@@ -61,7 +61,9 @@ func DoesUserExist(email string) bool {
 	return true
 }
 
-// Signup returns the registeration info
+// @Summary Signup/Register/Add Users
+// @Description Signup/Register/Add users
+// @Router /api/v1/signup [post]
 func Signup(c *gin.Context) {
 	var tempuser TempUser
 
@@ -111,6 +113,11 @@ func Signup(c *gin.Context) {
 
 }
 
+// @Summary /api/v1/auth/whoami returns the basic details (id, email) of the logged user.
+// @Description returns the ID, Email of the currently loggedin user.
+// @Router /api/v1/auth/whoami [get]
+// @Accept json
+// @Produce json
 // GetIDFromEmail returns the id and other info from the email
 func GetIDFromEmail(c *gin.Context) {
 	// db := c.MustGet("db").(*gorm.DB)
@@ -130,6 +137,12 @@ func GetIDFromEmail(c *gin.Context) {
 	}
 }
 
+// @Summary /api/v1/auth/reset_password ResetPassword allows you to reset your password.
+// @Description returns the ID, Email of the currently loggedin user.
+// @Router /api/v1/auth/reset_password [post]
+// @Accept json
+// @Produce json
+// @Param user body ResetPasswordInput true "User Data"
 // ResetPassword, reset the password for authenticated user.
 func ResetPassword(c *gin.Context) {
 	/*
@@ -331,4 +344,3 @@ func UpdateForgotenPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully."})
 }
-
