@@ -5,6 +5,7 @@ import (
 	"isp/middlewares"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	_ "isp/docs"
@@ -54,13 +55,23 @@ func PublicEndpoints(r *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) {
 		})
 	})
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
+	r.GET("/plans/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"data": controllers.GetCachedPlans()})
+	})
 }
 
 // SetupRouter creates a router with default
 func SetupRouter() *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
+	// CORS MIDDLEWARE
+	// CORS for https://foo.com and https://github.com origins, allowing:
+	// - PUT and PATCH methods
+	// - Origin header
+	// - Credentials share
+	// - Preflight requests cached for 12 hours
+	r.Use(cors.Default())
+
 	authMiddleware, _ := middlewares.GetAuthMiddleware()
 
 	v1 := r.Group("/api/v1/")
